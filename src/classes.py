@@ -52,6 +52,7 @@ class Interpreter:
         getType = lambda x, idx: x.split(':')[idx]
 
         for line in self.lex:
+            if line == []: continue
 
             COM_TYPE,                        \
             COMV    ,                         \
@@ -78,9 +79,9 @@ class Interpreter:
                 exec(value)
 
                 if SETTINGS['showDebugInfo']:
-                    c.log(f'{value=}   #')
-                    c.log(f'{MEMORY=}  ##')
-                    c.log(f'{ARGV=}   ###')
+                    c.log(f'{value=}')
+                    c.log(f'{MEMORY=}')
+                    c.log(f'{ARGV=}')
                 
             elif codeType is F_EXPR:
                 eval(value)
@@ -152,7 +153,6 @@ class Builtin:
             if self.comType in EXECUTE:
                 return EXECUTE[self.comType]
             else:
-                print('hello')
                 SRNError(8, "Invalid command name <statement>.", self.pos)
                 sys.exit(1)
     

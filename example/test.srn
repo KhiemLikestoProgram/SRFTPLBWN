@@ -1,3 +1,4 @@
 prnLn $_OS
 
-prnLn $_HW!
+prnLn $_USERS
+prnLn $_UNIXTIME

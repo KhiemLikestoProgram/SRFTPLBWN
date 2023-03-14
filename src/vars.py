@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import time
 import json
 import platform as pl
 import os
@@ -75,6 +76,7 @@ BUILTIN_VARS	= {
 	"_HW!":	 	"Hello world!",
 	"_OS": 	   f"{pl.system()} {pl.version()}",
 	"_THISPL":  "SRNFTPLBWN",
+	"_UNIXTIME": time.time(),
 	"_USERS":   os.name,
 	"_VER":	 	repr(Version('alpha', 1, 0, 0)),
 	"~":		str(Path.home()),

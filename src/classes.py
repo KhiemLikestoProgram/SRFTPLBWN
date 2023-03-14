@@ -152,9 +152,9 @@ class Builtin:
             if self.comType in EXECUTE:
                 return EXECUTE[self.comType]
             else:
+                print('hello')
                 SRNError(8, "Invalid command name <statement>.", self.pos)
                 sys.exit(1)
-
     def __call__(self):
         if   self.comType in COMPUTE:
             expr =self.expr()

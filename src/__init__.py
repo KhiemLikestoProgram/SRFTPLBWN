@@ -7,7 +7,6 @@ import sys
 
 
 if __name__ == "__main__":
-    c.log(SETTINGS)
     try:
         FILEPATH    = str(Path(sys.argv[1]).absolute())
     except IndexError:
@@ -19,4 +18,4 @@ if __name__ == "__main__":
             SRNError(2, f"The file '{FILEPATH}' doesn't exist in the current directory.", pos=None)
     
     
-    Interpreter(*Lexer(FILEPATH).lex())()
+    SRNI(*Lexer(FILEPATH).lex()).interpret()

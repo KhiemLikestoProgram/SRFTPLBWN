@@ -1,3 +1,4 @@
+from typing import Any
 from vars import *
 
 from functools      import reduce
@@ -37,147 +38,111 @@ Error [{errno}]: {errmes}
         )
         sys.exit(errno)    
 
-class Interpreter:
+class SRNI:
 
     """
-    Interpreter <class> for the SRNFTPLBWN language.
+    S.R.N. Interpreter <class> for the SRNFTPLBWN language.
     Last edited: 11:06 7/3/2023
     """
 
     def __init__(self, lex: list[list[str]], pos: Position) -> None:
         self.lex    = lex
         self.pos    = pos
+
+    def __call__(self) -> Any:
+
+        if self.COMV in KEYWORD['COMPUTE']:
+            expr = self.expr()
+            RESULTS.append(expr)
+            return F_EXPR, expr
+        
+        elif self.COMV in KEYWORD['EXECUTE']:   
+            return F_STAT, self.stmt(REQUIREMENTS[self.COM_TYPE])
+        
+        else:
+            SRNError(9, f"Invalid command type <{self.COM_TYPE}>.", self.pos)
     
-    def __call__(self) -> None:
+    def isAssignable(self, idx):
+        
+        """
+        Parameters:
+            arg    <Any>: argument value
+            idx    <int | str>: argument position | 'all'
+        """
+        if idx == 'all':
+            arg = self.ARGV
+        elif isinstance(idx, int): 
+            arg = self.ARGV[idx]
+        else: c.log('DEADEND #1'); sys.exit(1313)
+
+        if arg == T_IDENTIFIER:
+            if arg not in MEMORY:
+                SRNError(6, f"${arg} is not defined.", self.pos)
+            return True
+        
+        elif all([t in BUILTIN_TYPES for t in self.ARG_TYPE]): return True
+        else:
+            SRNError(5, f"{arg} is not assignable.", self.pos)
+
+    def interpret(self) -> None:
         getType = lambda x, idx: x.split(':')[idx]
 
         for line in self.lex:
             if line == []: continue
 
-            COM_TYPE,                        \
-            COMV    ,                         \
-            ARG_TYPE,                          \
-            ARGV,                               \
+            self.COM_TYPE,                        \
+            self.COMV    ,                         \
+            self.ARG_TYPE,                          \
+            self.ARGV,                               \
             =                                    \
             getType(line[0],  0),                 \
             getType(line[0], -1),                  \
            [getType(arg, 0) for arg in line[1:]],   \
            [getType(arg,-1) for arg in line[1:]]
             
-            for a in ARGV:
-                if a in MEMORY:
-                    ARGV[ARGV.index(a)] = MEMORY[a]
+            for a, t in zip(self.ARGV, self.ARG_TYPE):
+                if t is T_IDENTIFIER:
+                    if a in MEMORY:
+                        self.ARGV[self.ARGV.index(a)] = MEMORY[a]
+                    else: SRNError(10, f"${a} is NOT in the program's memory.", self.pos)
 
-            codeType, value = Builtin(ARGV, ARG_TYPE, COMV, COM_TYPE, self.pos)()
+            codeType, value = self()
 
             value = reduce(lambda a, kv: a.replace(*kv), TEMPL.items(), value)
-            
+
             if SETTINGS['showDebugInfo']:
-                c.log(f"{' '.join([COMV]+ARGV)} -> {value}")
+                c.log(f"{self.COMV} {self.ARGV} -> {value}")
             
             if   codeType is F_STAT:
                 exec(value)
 
                 if SETTINGS['showDebugInfo']:
+                    c.line()
                     c.log(f'{value=}')
                     c.log(f'{MEMORY=}')
-                    c.log(f'{ARGV=}')
+                    c.log(f'{self.ARGV=}')
                 
             elif codeType is F_EXPR:
                 eval(value)
 
-class Builtin:
+                if SETTINGS['showDebugInfo']:
+                    c.log(f'{RESULTS=}')
 
-    """
-
-    Parameters:
-        args                            <list[str]>:
-            Arguments to process
-        argsType                        <list[str]>:
-            Arguments' token types
-        com                             <str>:
-            Command to execute
-        comType                         <str>:
-            Command's token type
-
-    Builtin <class> for the SRNFTPLBWN language.
-    Use this class to "Pythonize" SRNFTPLBWN code.
-    Last edited: 11:38 8/3/2023
-    """
-
-    def __init__(self, args, argsType, com, comType, pos: Position) -> None:
-        
-        self.argsType   = argsType
-        self.com        = com
-        self.comType    = comType
-        self.pos        = pos
-        
-        self.args = [int(a) if t in T_INTEGER else a for a, t in zip(args, argsType)]
-            
-    def isAssignable(self, idx):
-        
-        """
-        Parameters:
-            idx <int>: argument position
-        """
-
-        if self.argsType[idx] is T_IDENTIFIER:
-            if self.args[idx] not in MEMORY:
-                SRNError(6, f"${self.args[idx]} is not defined.", self.pos)
-                sys.exit(1)
-
-                # TODO: Make an error system!
-            return True
-        
-        elif self.argsType[idx] in BUILTIN_TYPES: return True
-        else:
-            SRNError(5, f"Can't assign ${self.args[0]} to the value '{self.args[1]}'.", self.pos)
-            sys.exit(1)
-
-    ########## EXPRESSION ##########
+    ########## CODE TYPES ##########
 
     def expr(self):
-        if self.comType in COMPUTE:
-            return COMPUTE[self.comType]
+        if self.COMV in KEYWORD["COMPUTE"]:
+            return KEYWORD["COMPUTE"][self.COMV][1]
         else:
-            SRNError(7, "Invalid command name <expression>.", self.pos)
-            sys.exit(1)
+            SRNError(7, "Invalid command name [expression].", self.pos)
 
-    def stmt(self, idx):
-        if idx == 'all':
-            isAssignable = all([self.isAssignable(i) for i, _ in enumerate(self.args)])
-        else:
-            isAssignable = self.isAssignable(idx)
-
-        if isAssignable:
-            if self.comType in EXECUTE:
-                return EXECUTE[self.comType]
+    def stmt(self, arg):
+        if self.isAssignable(arg):
+            if self.COMV in KEYWORD["EXECUTE"]:
+                return KEYWORD["EXECUTE"][self.COMV][1]
             else:
-                SRNError(8, "Invalid command name <statement>.", self.pos)
-                sys.exit(1)
+                SRNError(8, "Invalid command name [statement].", self.pos)
     
-    def __call__(self):
-        if   self.comType in COMPUTE:
-            expr =self.expr()
-            RESULTS.append(expr)
-            return F_EXPR, expr
-        elif self.comType in EXECUTE:
-            return F_STAT, eval(f"self.{self.com}()")
-        else:
-            SRNError(9, "Invalid command type.", self.pos)
-            sys.exit(1)
-    
-    ########## STATEMENT ##########
-
-    def prnLn(self):
-        return self.stmt(0)
-
-    def prn(self):
-        return self.stmt('all')
-
-    def var(self):
-        return self.stmt(1)
-
 class Token:
 
     """
@@ -208,20 +173,27 @@ class Lexer:
         lex = [self.tokenize(line) for line in self.txt]
 
         for i, line in enumerate(lex):
+
             if line != []:
                 for j, token in enumerate(line):
                     
                     self.pos.tk += 1
 
-                    if  all([char in DIGITS for char in token[1:]]):
+                    if  all([char in DIGITS for char in token]):
+                        if token.count('.') <= 1:
+                            lex[i][j] = repr(Token(T_FLOAT, token))
+
                         lex[i][j] = repr(Token(T_INTEGER, token))
 
                     else:
                         if token in LITERALS:
                             lex[i][j] = repr(Token(LITERALS[token], token))
 
-                        elif token in KEYWORD:
-                            lex[i][j] = repr(Token(KEYWORD[token], token))
+                        elif token in KEYWORD["EXECUTE"]:
+                            lex[i][j] = repr(Token(KEYWORD["EXECUTE"][token][0], token))
+                        
+                        elif token in KEYWORD["COMPUTE"]:
+                            lex[i][j] = repr(Token(KEYWORD["COMPUTE"][token][0], token))
 
                         elif re.search(pattern=r'\$[A-Za-z_][\w@!-]*+', string=token):
                             if token[1:] in BUILTIN_VARS:
@@ -232,6 +204,9 @@ class Lexer:
 
                                 elif tokenInstType == int:
                                     lex[i][j] = repr(Token(T_INTEGER, BUILTIN_VARS[token[1:]]))
+
+                                elif tokenInstType == float:
+                                    lex[i][j] = repr(Token(T_FLOAT, BUILTIN_VARS[token[1:]]))
                                 
                                 continue
 

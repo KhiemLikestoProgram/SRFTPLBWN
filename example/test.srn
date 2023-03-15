@@ -1,4 +1,2 @@
-prnLn $_OS
-
-prnLn $_USERS
-prnLn $_UNIXTIME
+prnLn $_THISPL
+prn $_THISPL

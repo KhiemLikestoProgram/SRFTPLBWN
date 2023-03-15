@@ -209,6 +209,18 @@ class Lexer:
                                     lex[i][j] = repr(Token(T_FLOAT, BUILTIN_VARS[token[1:]]))
                                 
                                 continue
+                            
+                            elif token[1:] in MEMORY:
+                                tokenInstType = type(MEMORY[token[1:]])
+
+                                if tokenInstType == str:
+                                    lex[i][j] = repr(Token(T_STRING, MEMORY[token[1:]]))
+
+                                elif tokenInstType == int:
+                                    lex[i][j] = repr(Token(T_INTEGER, MEMORY[token[1:]]))
+
+                                elif tokenInstType == float:
+                                    lex[i][j] = repr(Token(T_FLOAT, MEMORY[token[1:]]))
 
                             lex[i][j] = repr(Token(T_IDENTIFIER, token[1:]))
 

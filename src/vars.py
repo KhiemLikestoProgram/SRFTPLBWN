@@ -34,14 +34,14 @@ KEYWORD	 = {
 		"const":  ("CONST",  "MEMORY.update({$0: ($1, F_LOCKED)}"),
 	},
 	"COMPUTE": {
-		"add":	  ("ADD",  "np.add($0, $1)"),
-		"sub":	  ("SUB",  "np.subtract($0, $1)"),
-		"mul":	  ("MUL",  "np.multiply($0, $1)"),
-		"div":	  ("DIV",  "np.divide($0, $1)"),
-		"fdiv":	  ("FDIV", "np.divmod($0, $1)"),
-		"mod":	  ("MOD",  "np.mod($0, $1)"),
-		"log":	  ("LOG",  "np.emath.logn($0, $1)"),
-		"pow":	  ("POW",  "np.power($0, $1)"),
+		"add":	  ("ADD",  "np.add(		np.array([$0, $1]))"),
+		"sub":	  ("SUB",  "np.subtract(np.array([$0, $1]))"),
+		"mul":	  ("MUL",  "np.multiply(np.array([$0, $1]))"),
+		"div":	  ("DIV",  "np.divide(	np.array([$0, $1]))"),
+		"fdiv":	  ("FDIV", "np.divmod(	np.array([$0, $1]))"),
+		"mod":	  ("MOD",  "np.mod(		np.array([$0, $1]))"),
+		"log":	  ("LOG",  "np.emath.logn(np.array([$0, $1]))"),
+		"pow":	  ("POW",  "np.power(	np.array([$0, $1]))"),
 	},
 }
 

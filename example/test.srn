@@ -1,2 +1,2 @@
-prnLn $_THISPL
-prn $_THISPL
+var $hi 12345
+prnLn $hi

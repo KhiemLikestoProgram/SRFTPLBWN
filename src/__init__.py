@@ -5,7 +5,6 @@ from vars   import *
 from pathlib import Path
 import sys
 
-
 if __name__ == "__main__":
     try:
         FILEPATH    = str(Path(sys.argv[1]).absolute())

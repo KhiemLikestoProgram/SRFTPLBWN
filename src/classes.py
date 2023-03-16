@@ -4,6 +4,7 @@ from vars import *
 from functools      import reduce
 from rich.console   import Console
 
+import numpy as np
 import re
 import sys
 
@@ -50,13 +51,12 @@ class SRNI:
         self.pos    = pos
 
     def __call__(self) -> Any:
-
-        if self.COMV in KEYWORD['COMPUTE']:
+        if self.COMV in KEYWORD["EXPR"]:
             expr = self.expr()
             RESULTS.append(expr)
             return F_EXPR, expr
         
-        elif self.COMV in KEYWORD['EXECUTE']:   
+        elif self.COMV in KEYWORD["STMT"]:   
             return F_STAT, self.stmt(REQUIREMENTS[self.COM_TYPE])
         
         else:
@@ -76,6 +76,7 @@ class SRNI:
         else: c.log('DEADEND #1'); sys.exit(1313)
 
         if arg == T_IDENTIFIER:
+            c.log(arg, 2023)
             if arg not in MEMORY:
                 SRNError(6, f"${arg} is not defined.", self.pos)
             return True
@@ -86,29 +87,42 @@ class SRNI:
 
     def interpret(self) -> None:
         getType = lambda x, idx: x.split(':')[idx]
+        py_to_srn = lambda mem: {str: T_STRING, int: T_INTEGER, float: T_FLOAT}[type(mem)]
 
-        for line in self.lex:
+        for i, line in enumerate(self.lex):
+
             if line == []: continue
 
             self.COM_TYPE,                        \
             self.COMV    ,                         \
             self.ARG_TYPE,                          \
             self.ARGV,                               \
-            =                                    \
-            getType(line[0],  0),                 \
-            getType(line[0], -1),                  \
-           [getType(arg, 0) for arg in line[1:]],   \
-           [getType(arg,-1) for arg in line[1:]]
+            =                                         \
+            getType(line[0],  0),                      \
+            getType(line[0],  1),                       \
+           [getType(arg, 0) for arg in line[1:]],        \
+           [getType(arg, 1) for arg in line[1:]]
             
-            for a, t in zip(self.ARGV, self.ARG_TYPE):
-                if t is T_IDENTIFIER:
+            # Replaces every argument Token object (value and type) with a builtin Token object.
+            for (i, a), t in zip(enumerate(self.ARGV), self.ARG_TYPE):
+                
+                if  t == T_IDENTIFIER \
+                and self.COM_TYPE not in [KEYWORD["STMT"]['set'][0], KEYWORD["STMT"]['def'][0]]:
                     if a in MEMORY:
-                        self.ARGV[self.ARGV.index(a)] = MEMORY[a]
+                        self.ARG_TYPE[i]    = py_to_srn(MEMORY[a][0]) # Find a better solution later
+                        self.ARGV[i]        = MEMORY[a][0]
                     else: SRNError(10, f"${a} is NOT in the program's memory.", self.pos)
 
-            codeType, value = self()
+                elif t == T_INTEGER \
+                and self.COM_TYPE in [val[0] for val in KEYWORD["EXPR"]]:
+                    self.ARGV[i] = int(a)
+                
+                elif t == T_FLOAT \
+                and self.COM_TYPE in [val[0] for val in KEYWORD["EXPR"]]:
+                    self.ARGV[i] = float(a)
 
-            value = reduce(lambda a, kv: a.replace(*kv), TEMPL.items(), value)
+
+            codeType, value = self()
 
             if SETTINGS['showDebugInfo']:
                 c.log(f"{self.COMV} {self.ARGV} -> {value}")
@@ -131,15 +145,15 @@ class SRNI:
     ########## CODE TYPES ##########
 
     def expr(self):
-        if self.COMV in KEYWORD["COMPUTE"]:
-            return KEYWORD["COMPUTE"][self.COMV][1]
+        if self.COMV in KEYWORD["EXPR"]:
+            return KEYWORD["EXPR"][self.COMV][1]
         else:
             SRNError(7, "Invalid command name [expression].", self.pos)
 
     def stmt(self, arg):
         if self.isAssignable(arg):
-            if self.COMV in KEYWORD["EXECUTE"]:
-                return KEYWORD["EXECUTE"][self.COMV][1]
+            if self.COMV in KEYWORD["STMT"]:
+                return KEYWORD["STMT"][self.COMV][1]
             else:
                 SRNError(8, "Invalid command name [statement].", self.pos)
     
@@ -173,64 +187,51 @@ class Lexer:
         lex = [self.tokenize(line) for line in self.txt]
 
         for i, line in enumerate(lex):
+            
+            if line == []: self.pos.tk += 1; continue
 
-            if line != []:
-                for j, token in enumerate(line):
+            for j, token in enumerate(line):
+                
+                self.pos.tk += 1
+
+                if  all([char in DIGITS for char in token]):
+                    if token.count('.') <= 1:
+                        lex[i][j] = repr(Token(T_FLOAT, token))
+
+                    lex[i][j] = repr(Token(T_INTEGER, token))
+
+                else:
+                    if token in LITERALS:
+                        lex[i][j] = repr(Token(LITERALS[token], token))
+
+                    elif token in KEYWORD["STMT"]:
+                        lex[i][j] = repr(Token(KEYWORD["STMT"][token][0], token))
                     
-                    self.pos.tk += 1
+                    elif token in KEYWORD["EXPR"]:
+                        lex[i][j] = repr(Token(KEYWORD["EXPR"][token][0], token))
 
-                    if  all([char in DIGITS for char in token]):
-                        if token.count('.') <= 1:
-                            lex[i][j] = repr(Token(T_FLOAT, token))
+                    elif re.search(pattern=r'\$[A-Za-z_][\w@!-]*+', string=token):
+                        if token[1:] in BUILTIN_VARS:
+                            tokenInstType = type(BUILTIN_VARS[token[1:]])
 
-                        lex[i][j] = repr(Token(T_INTEGER, token))
+                            if tokenInstType == str:
+                                lex[i][j] = repr(Token(T_STRING, BUILTIN_VARS[token[1:]]))
+
+                            elif tokenInstType == int:
+                                lex[i][j] = repr(Token(T_INTEGER, BUILTIN_VARS[token[1:]]))
+
+                            elif tokenInstType == float:
+                                lex[i][j] = repr(Token(T_FLOAT, BUILTIN_VARS[token[1:]]))
+
+                        lex[i][j] = repr(Token(T_IDENTIFIER, token[1:]))
+
+                    elif re.search(pattern=r'[\'"].+[\'"]', string=token, flags=re.DOTALL):
+                        lex[i][j] = repr(Token(T_STRING, eval(token)))
+
+                    #elif re.search(pattern=r'\d', string=token): pass
 
                     else:
-                        if token in LITERALS:
-                            lex[i][j] = repr(Token(LITERALS[token], token))
-
-                        elif token in KEYWORD["EXECUTE"]:
-                            lex[i][j] = repr(Token(KEYWORD["EXECUTE"][token][0], token))
-                        
-                        elif token in KEYWORD["COMPUTE"]:
-                            lex[i][j] = repr(Token(KEYWORD["COMPUTE"][token][0], token))
-
-                        elif re.search(pattern=r'\$[A-Za-z_][\w@!-]*+', string=token):
-                            if token[1:] in BUILTIN_VARS:
-                                tokenInstType = type(BUILTIN_VARS[token[1:]])
-
-                                if tokenInstType == str:
-                                    lex[i][j] = repr(Token(T_STRING, BUILTIN_VARS[token[1:]]))
-
-                                elif tokenInstType == int:
-                                    lex[i][j] = repr(Token(T_INTEGER, BUILTIN_VARS[token[1:]]))
-
-                                elif tokenInstType == float:
-                                    lex[i][j] = repr(Token(T_FLOAT, BUILTIN_VARS[token[1:]]))
-                                
-                                continue
-                            
-                            elif token[1:] in MEMORY:
-                                tokenInstType = type(MEMORY[token[1:]])
-
-                                if tokenInstType == str:
-                                    lex[i][j] = repr(Token(T_STRING, MEMORY[token[1:]]))
-
-                                elif tokenInstType == int:
-                                    lex[i][j] = repr(Token(T_INTEGER, MEMORY[token[1:]]))
-
-                                elif tokenInstType == float:
-                                    lex[i][j] = repr(Token(T_FLOAT, MEMORY[token[1:]]))
-
-                            lex[i][j] = repr(Token(T_IDENTIFIER, token[1:]))
-
-                        elif re.search(pattern=r'[\'"].+[\'"]', string=token, flags=re.DOTALL):
-                            lex[i][j] = repr(Token(T_STRING, eval(token)))
-
-                        #elif re.search(pattern=r'\d', string=token): pass
-
-                        else:
-                            SRNError(3, f"Invalid token: <{token}>", self.pos)
+                        SRNError(3, f"Invalid token: <{token}>", self.pos)
 
             self.pos.ln += 1
 

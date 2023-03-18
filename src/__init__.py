@@ -1,6 +1,6 @@
 
 from classes import *
-from vars   import *
+from variables import *
 
 from pathlib import Path
 import sys

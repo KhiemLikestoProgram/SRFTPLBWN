@@ -6,13 +6,10 @@
         "-p",
         "*_test.py"
     ],
-    "workbench.colorCustomizations": {
-        "editor.background": "#140a24"
-    },
     "editor.tokenColorCustomizations": {
         "textMateRules": [
             {
-                "scope": "variable.other",
+                "scope": "variable.other.python",
                 "settings": {
                     "foreground": "#64fc78dc",
                     "fontStyle": "italic bold"

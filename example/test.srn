@@ -1,1 +1,3 @@
-prnLn 2023
+set $hello "hello world"
+set $test-multivar "another variable"
+prnLn "$hello $test-multivar"

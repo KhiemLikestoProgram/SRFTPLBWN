@@ -26,56 +26,47 @@ LITERALS = {
 	"==":   "EQEQ"
 }
 
-KEYWORDS = {
-	"STMT": {
-	#	Token	    Type	  Function to call   #
-		"inp":	  ("INPUT",  "inp"),
-		"inpLn":  ("INPLN",  "inpLn"),
-		"prn":    ("PRINT",	 "prn"),
-		"prnLn":  ("PRNLN",	 "prnLn"),
-		"set":    ("SET",	 "var"),
-		"def":    ("DEF",	 "const"),
-	},
-	"EXPR": {
-		"sub":	  ("SUB",	 "sub"),
-		"add":	  ("ADD",	 "add"),
-		"mul":	  ("MUL",	 "mul"),
-		"div":	  ("DIV",	 "div"),
-		"fdiv":	  ("FDIV",	 "floor_div"),
-		"mod":	  ("MOD",	 "mod"),
-		"log":	  ("LOG",	 "log"),
-		"pow":	  ("POW",	 "pow"),
-	},
-}
-
-REQUIREMENTS = {
-	"SET": 		0,
-	"DEF": 		0,
-	"PRINT": 	"all",
-	"PRNLN": 	"all",
-	"INPUT":	"all",
-}
-
 ### TOKEN TYPES ###
 T_FLOAT			= 'FLOAT'
 T_IDENTIFIER	= 'IDEN'	
 T_INTEGER 		= 'INT'
 T_STRING		= 'STR'
 
-DIGITS = '0123456789ABCDEF'
-
 BUILTIN_VARS	= {
-	"_AUTH":  "NTGKhiem74",
-	"_USR":  os.getlogin(),
-	"_CWD":	str(Path.cwd()),
+	"_AUTH":  	"NTGKhiem74",
+	"_USR":  	os.getlogin(),
+	"_CWD":		str(Path.cwd()),
 	"_HW!":	 	"Hello world!",
-	"_OS": 	   f"{pl.system()} {pl.version()}",
+	"_OS": 	   	f"{pl.system()} {pl.version()}",
 	"_THISPL":  "SRNFTPLBWN",
-	"_UNIXTIME": time.time(),
+	"_UNIXTIME":time.time(),
 	"_VER":	 	repr(Version('alpha', 0, 1, 1)),
 	"~":		str(Path.home()),
 }
-BUILTIN_TYPES   = [ globals()[var] for var in dir() if re.search(r'T_', var) ]
+BUILTIN_TYPES   = [ globals()[var] for var in dir() if re.match(r'T_', var) ]
+
+### KEYWORDS ###
+KEYWORDS = {
+	"STMT": {
+	#	Token	    Type	  Function to call   #
+		"inp":	  ("INPUT",  "inp", 	("all", BUILTIN_TYPES)),
+		"inpLn":  ("INPLN",  "inpLn", 	("all", BUILTIN_TYPES)),
+		"prn":    ("PRINT",	 "prn", 	("all", BUILTIN_TYPES)),
+		"prnLn":  ("PRNLN",	 "prnLn", 	("all", BUILTIN_TYPES)),
+		"set":    ("SET",	 "var", 	(1, 	BUILTIN_TYPES)),
+		"def":    ("DEF",	 "const", 	(1, 	BUILTIN_TYPES)),
+	},
+	"EXPR": {
+		"sub":	  ("SUB",	 "sub", 	("all", (T_INTEGER, T_FLOAT))),
+		"add":	  ("ADD",	 "add", 	("all", (T_INTEGER, T_FLOAT))),
+		"mul":	  ("MUL",	 "mul", 	("all", (T_INTEGER, T_FLOAT))),
+		"div":	  ("DIV",	 "div", 	("all", (T_INTEGER, T_FLOAT))),
+		"fdiv":	  ("FDIV",	 "floor_div", ("all", (T_INTEGER, T_FLOAT))),
+		"mod":	  ("MOD",	 "mod", 	("all", (T_INTEGER, T_FLOAT))),
+		"log":	  ("LOG",	 "log", 	("all", (T_INTEGER, T_FLOAT))),
+		"pow":	  ("POW",	 "pow", 	("all", (T_INTEGER, T_FLOAT))),
+	},
+}
 
 STPATH = os.environ.get("SRNFTPL_SETTINGS_PATH")
 

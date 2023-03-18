@@ -1,3 +1,2 @@
-set $hello "hello world"
-set $test-multivar "another variable"
-prnLn "$hello $test-multivar"
+def $π 3.141592
+mul $π 2

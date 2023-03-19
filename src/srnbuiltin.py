@@ -44,34 +44,14 @@ class Expression:
         self.argsType = argsType
         self.args     = args
 
-    @staticmethod
-    def add():
-        RESULTS.append(np.add(self.args[0], self.args[1]))
-        
-    @staticmethod
-    def sub(): 
-        RESULTS.append(np.subtract(self.args[0], self.args[1]))
-
-    @staticmethod
-    def mul():
-        RESULTS.append(np.multiply(self.args[0], self.args[1]))
-
-    @staticmethod
-    def div(): 
-        RESULTS.append(np.divide(self.args[0], self.args[1]))
-
-    @staticmethod
-    def floor_div():
-        RESULTS.append(np.floor_divide(self.args[0], self.args[1]))
-
-    @staticmethod
-    def mod():
-        RESULTS.append(np.mod(self.args[0], self.args[1]))
+    add = lambda self: RESULTS.append(np.add(self.args[0], self.args[1]))
+    sub = lambda self: RESULTS.append(np.subtract(self.args[0], self.args[1]))
+    mul = lambda self: RESULTS.append(np.multiply(self.args[0], self.args[1]))
+    div = lambda self: RESULTS.append(np.divide(self.args[0], self.args[1]))
+    floor_div \
+        = lambda self: RESULTS.append(np.floor_divide(self.args[0], self.args[1]))
+    mod = lambda self: RESULTS.append(np.mod(self.args[0], self.args[1]))
+    log = lambda self: RESULTS.append(np.emath.logn(self.args[0], self.args[1]))
+    pow = lambda self: RESULTS.append(np.power(self.args[0], self.args[1]))
     
-    @staticmethod
-    def log():
-        RESULTS.append(np.emath.logn(self.args[0], self.args[1]))
-
-    @staticmethod
-    def pow():
-        RESULTS.append(np.power(self.args[0], self.args[1]))
+    sum = lambda self: RESULTS.append(np.sum(np.array(self.args)))

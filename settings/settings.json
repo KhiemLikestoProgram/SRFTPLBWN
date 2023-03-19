@@ -1,3 +1,4 @@
 {
-    "showDebugInfo": true
+    "showDebugInfo": true,
+    "lineNoColor": "#f34242"
 }

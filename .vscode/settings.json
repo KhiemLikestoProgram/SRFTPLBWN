@@ -6,17 +6,6 @@
         "-p",
         "*_test.py"
     ],
-    "editor.tokenColorCustomizations": {
-        "textMateRules": [
-            {
-                "scope": "variable.other.python",
-                "settings": {
-                    "foreground": "#64fc78dc",
-                    "fontStyle": "italic bold"
-                }
-            }
-        ]
-    },
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true
 }

@@ -40,6 +40,11 @@ BUILTIN_VARS	= {
 }
 BUILTIN_TYPES   = [ globals()[var] for var in dir() if re.match(r'T_', var) ]
 
+STPATH = r"D:\srnftplbwn\settings"
+
+with open(f"{STPATH}/settings.json", 'r') as setting:
+	SETTINGS = json.loads(setting.read())
+
 ### KEYWORDS ###
 KEYWORDS = {
 	#	Token	    Type	  Function to call   #
@@ -67,14 +72,13 @@ KEYWORDS = {
 		"sum":    ("SUM", 	 "add",		("all", (T_IDENTIFIER, T_INTEGER, T_FLOAT))),
 	},
 }
-
-STPATH = r"D:\srnftplbwn\settings"
-
-with open(f"{STPATH}/settings.json", 'r') as setting:
-	SETTINGS = json.loads(setting.read())
-
-with open(f"{STPATH}/config.json", 'r') as config:
-	CONFIGS = json.loads(config.read())
+PARAMETERS = {
+	"-d": ("debug", "Show the states of variables in each command, one at a time."),
+	"-?": ("help",	"Show this help message."),
+}
+COLORS = {
+	"accent": "#29dfa9",
+}
 
 # Not constants!
 MEMORY  = {}

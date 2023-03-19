@@ -1,6 +1,7 @@
 
 from variables import *
 
+from rich.console import Console
 import numpy as np
 import sys
 
@@ -55,3 +56,18 @@ class Expression:
     pow = lambda self: RESULTS.append(np.power(self.args[0], self.args[1]))
     
     sum = lambda self: RESULTS.append(np.sum(np.array(self.args)))
+
+class Param:
+
+    @staticmethod
+    def debug(*args):
+        SETTINGS['showDebugInfo'] = True
+
+    @staticmethod
+    def help(*args):
+        c = Console()
+        accentColor = COLORS["accent"]
+        c.print(f"Welcome to [{accentColor} bold italic]{BUILTIN_VARS['_THISPL']} [dim]{BUILTIN_VARS['_VER']}[reset]!")
+        c.print("Here's the list of available commands:")
+        c.print('\n'.join([f'{k:5s} -> {v[1]}' for k, v in PARAMETERS.items()]))
+        sys.exit(0)

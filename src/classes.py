@@ -103,7 +103,6 @@ class SRNFTPLBWNI:
             for (i, a), t in zip(enumerate(self.ARGV), self.ARG_TYPE):
                 self.pos.tk += 1
 
-                c.log(self.COM_TYPE, t)
                 if  t == T_IDENTIFIER \
                 and self.COM_TYPE not in [KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]]:
                     if a in MEMORY:

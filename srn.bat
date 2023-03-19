@@ -1,2 +1,3 @@
 @echo off
-python ./src/__init__.py %1
+cd /d D:/srnftplbwn
+python ./src/__init__.py %1 %2 %3

@@ -1,3 +1,1 @@
-wrtLn "int main(int argc, char **argv) {"
-wrtLn "  return 0;"
-wrtLn "};"
+prnLn "Welcome to \n" $_THISPL " " $_VER "!"

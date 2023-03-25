@@ -1,6 +1,6 @@
 # SRNFTPLBWN (Some random name for this programming language, because why not?)
 
-SRNFTPLBWN (SRNFTPL for short) is a programing (scripting) language, design to do basic stuff and to help people learn concepts about programming.
+SRNFTPLBWN (SRN for short) is a programing (scripting) language, design to do basic stuff and to help people learn concepts about programming.
 
 ---
 ## _Current version_: `v1.0.0a`

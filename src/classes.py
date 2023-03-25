@@ -2,16 +2,9 @@
 ########### IMPORTS ###########
 
 from variables import *
-import srnbuiltin as srnbi
+from srnbuiltin import *
 
 import re
-import sys
-
-if SETTINGS['showDebugInfo']:
-    from rich.console   import Console
-    from rich.panel     import Panel
-    c = Console()
-
 
 ########### CLASSES ###########
 
@@ -26,26 +19,16 @@ class Position:
         self.tk = tok
         self.ln = ln
         self.fn = fn
+    
+    def advance(self, mode='token'):
+        match mode:
+            case 'line': self.ln += 1; self.tk = 0
+            case 'token': self.tk += 1
 
-class SRNError:
-    def __init__(self, errno: int, errmes, pos: Position | None) -> None:
-        match pos:
-            case None:
-                posDetail = f"<noPosInfo>"
-            case _:
-                posDetail = f"[File {pos.fn}, Ln {pos.ln}, Tok {pos.tk}]"
-        c.log(\
-f"""\
-Error [{errno}]: {errmes}
-{posDetail}
-"""
-        )
-        sys.exit(errno)    
-
-class SRNFTPLBWNI:
+class Interpreter:
 
     """
-    S.R.N. Interpreter <class> for the SRNFTPLBWN language.
+    SRNFTPLBWN Interpreter <class> for the SRNFTPLBWN language.
     Last edited: 11:06 7/3/2023
     """
 
@@ -55,6 +38,8 @@ class SRNFTPLBWNI:
         
     def isType(self, idx, types_):
         """
+        Checks if the argument of (option idx) is in the types_ provided for the command.
+
         Parameters:
             idx    <int | str | tuple>: argument position | 'all'
         """
@@ -62,105 +47,108 @@ class SRNFTPLBWNI:
             if all([t in types_ for t in self.ARG_TYPE]):
                 return True
             else:
-                SRNError(5, 
-                f"Failed the requirements, need all arguments to be in these types: {types_}.", self.pos)
+                SRNError(ERRORS["SCE"], 
+                f"All arguments must be in \n{types_}.", self.pos)
 
         elif isinstance(idx, tuple):
             if all([t in types_ for t in idx]):
                 return True
             else:
-                SRNError(5.1, 
-                f"Failed the requirements, need arguments with {idx=} to be in these types: {types_}", self.pos)
+                SRNError(ERRORS["SCE"], 
+                f"Arguments span from {idx[0]} to {idx[1]} must be in \n{types_}, not {idx}", self.pos)
 
         elif isinstance(idx, int) and idx < len(self.ARGV):
             t = self.ARG_TYPE[idx]
             if t in types_:
                 return True
             else:
-                SRNError(5.2, f"Failed the requirements, need an argument with {idx=} to be in these types: {types_}", self.pos)
-            
-        else: c.log('DEADEND #1'); sys.exit(1313)
+                SRNError(ERRORS["SCE"], 
+                f"The argument no. {idx} must be in \n{types_}, not {t}", self.pos)
         
-    def interpret(self) -> None:
-        getType = lambda x, idx: x.split(':')[idx]
+        elif idx is None: return True
 
+        else:
+            SRNError(ERRORS["ITPTE"], "I")
+
+    def run(self) -> None:
         for i, line in enumerate(self.lex):
+            if line == [] or line[0].split(':')[0] in KEYWORDS['COMMENT']:
+                self.pos.advance('line'); continue
 
-            if line == []: self.pos.ln += 1; continue
-
-            if getType(line[0], 1) in KEYWORDS['COMMENT']: self.pos.ln += 1; continue
-
-            self.COM_TYPE, self.COMV,                   \
-            self.ARG_TYPE, self.ARGV                    \
-            =                                           \
-            getType(line[0], 0), getType(line[0], 1),   \
-           [getType(arg, 0) for arg in line[1:]],       \
-           [getType(arg, 1) for arg in line[1:]]
+            self.COM_TYPE, self.COMV,                           \
+            self.ARG_TYPE, self.ARGV                            \
+            =                                                   \
+            line[0].split(':')[0],                              \
+            line[0].split(':')[1],                              \
+           [         arg.split(':')[0]   for arg in line[1:]],  \
+           [':'.join(arg.split(':')[1:]) for arg in line[1:]]
             
-            # Replaces every argument Token object (value and type) with a builtin Token object, if it is in
-            # the program's "memory".
-            self.pos.tk += 1
+            c.print_json(dir(Statement))
+            # Replaces every argument Token object (value and type) with a `iden` object, 
+            # if it is in the program's "memory".
+            self.pos.advance()
             for (i, a), t in zip(enumerate(self.ARGV), self.ARG_TYPE):
-                self.pos.tk += 1
+                self.pos.advance()
+                cls = [bit[1] for bit in BUILTIN_TYPES if t == bit[0]][0]
 
-                if  t == T_IDENTIFIER \
-                and self.COM_TYPE not in [KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]]:
+                if  t == T_IDENTIFIER[0]    \
+                and self.COM_TYPE not in (KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]):
                     if a in MEMORY:
-                        self.ARG_TYPE[i]    = MEMORY[a][0]
-                        
-                        if   MEMORY[a][0] == T_STRING:
-                            self.ARGV[i]    = MEMORY[a][1]
-                        elif MEMORY[a][0] == T_INTEGER:
-                            self.ARGV[i]    = int(MEMORY[a][1])
-                        elif MEMORY[a][0] == T_FLOAT:
-                            self.ARGV[i]    = float(MEMORY[a][1])
-                    else: SRNError(10, f"${a} is NOT in the program's memory.", self.pos)
+                        self.ARG_TYPE[i] = MEMORY[a][0]
 
-                elif t == T_INTEGER \
+                        if cls == iden:
+                            match self.ARGV[i]:
+                                case '.': self.ARGV[i] = RESULTS[-1] if RESULTS else ''
+                            self.ARGV[i] = cls(self.ARGV[i])
+
+                        elif cls not in None:
+                            self.ARGV[i] = cls(MEMORY[a][1])
+                    else:
+                        SRNError(ERRORS["SCE"], f"${a} is NOT in the program's memory.", self.pos)
+
+                elif t in (T_INTEGER[0], T_FLOAT[0])    \
                 and self.COMV in KEYWORDS["EXPR"]:
-                    self.ARGV[i] = int(a)
+                    self.ARGV[i] = cls(a)
                 
-                elif t == T_FLOAT \
-                and self.COMV in KEYWORDS["EXPR"]:
-                    self.ARGV[i] = float(a)
+                elif i == 1 \
+                and t == T_IDENTIFIER[0] \
+                and self.COM_TYPE in (KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]):
+                    match self.ARGV[i]:
+                        case '.': self.ARGV[i] = RESULTS[-1] if RESULTS else ''
+                        case _: self.ARGV[i] = iden(self.ARGV[i])
 
-            if self.COMV in KEYWORDS["EXPR"]:
-                self.expr(KEYWORDS["EXPR"][self.COMV][2])
-            elif self.COMV in KEYWORDS["STMT"]:
-                self.stmt(KEYWORDS["STMT"][self.COMV][2])
-            elif self.COMV in KEYWORDS["COMMENT"]:
-                global cont
-                cont = ' '.join(self.ARGV)
+            if self.COMV in KEYWORDS["EXPR"]:   self.expr(KEYWORDS["EXPR"][self.COMV][2])
+            elif self.COMV in KEYWORDS["STMT"]: self.stmt(KEYWORDS["STMT"][self.COMV][2])
+            elif self.COMV in KEYWORDS["COMMENT"]:global cont; cont = ' '.join(self.ARGV)
             else:
-                SRNError(9, f"Invalid command value <{self.COMV}>.", self.pos)
-            
-            if SETTINGS['showDebugInfo']:
+                SRNError(ERRORS["SCE"], f"Invalid command type <{self.COMV}>.", self.pos)
+
+            if SETTINGS['show-debug-info']:
                 panel = Panel(
-                cont, title="At line <[%s]%i[/%s]>" % (SETTINGS['lineNoColor'], self.pos.ln, SETTINGS['lineNoColor']),
+                cont, title="At line <[%s]%i[/]>" % (COLORS["accent"], self.pos.ln),
                 title_align='left', highlight=True
                 )
                 c.print(panel)
 
-            self.pos.ln += 1
+            self.pos.advance('line')
 
     ########## CODE TYPES ##########
 
     def expr(self, req):
-        c.log(self.ARG_TYPE)
         if self.isType(*req):
-            expr = srnbi.Expression(self.ARGV, self.ARG_TYPE)
+            expr = Expression(self.ARGV, self.ARG_TYPE)
             getattr(expr, KEYWORDS["EXPR"][self.COMV][1])()
         
-        if SETTINGS['showDebugInfo']:
+        if SETTINGS['show-debug-info']:
             global cont
             cont = f'{RESULTS=}'
 
     def stmt(self, req):
         if self.isType(*req):
-            stmt = srnbi.Statement(SRNError, self.pos, self.ARGV, self.ARG_TYPE)
+            stmt = Statement(self.pos, self.COMV, self.ARGV, self.ARG_TYPE)
             getattr(stmt, KEYWORDS["STMT"][self.COMV][1])()
             
-        if SETTINGS['showDebugInfo']:
+        if SETTINGS['show-debug-info']:
             global cont
             cont = f'{RESULTS=}\n{MEMORY=}\n{self.ARGV=}'
     
@@ -196,19 +184,18 @@ class Lexer:
         isComment = False
 
         for i, line in enumerate(lex):
-            if line == []: self.pos.ln += 1; continue
+            if line == []: self.pos.advance('line'); continue
 
             for j, token in enumerate(line):
-                self.pos.tk += 1
+                self.pos.advance('tok')
                 
-                if isComment: 
-                    isComment = False; break
+                if isComment: isComment = False; break
 
                 if  re.match(r'^[+-]?(\d*\.)?\d+$', token):
-                    if re.search(r'\.', token):
-                        lex[i][j] = repr(Token(T_FLOAT, token))
+                    if '.' in token:
+                        lex[i][j] = repr(Token(T_FLOAT[0], token))
                     else:
-                        lex[i][j] = repr(Token(T_INTEGER, token))
+                        lex[i][j] = repr(Token(T_INTEGER[0], token))
                 else:
 
                     if token in KEYWORDS["STMT"]:
@@ -217,32 +204,27 @@ class Lexer:
                     elif token in KEYWORDS["EXPR"]:
                         lex[i][j] = repr(Token(KEYWORDS["EXPR"][token][0], token))
                     
-                    elif re.match(r'(cmt|#)', token[:3]):
-                        lex[i][j] = repr(Token(T_COMMENT, token))
+                    elif re.match(r'(cmt|#)', token):
+                        lex[i][j] = repr(Token(T_COMMENT[0], token))
                         isComment = True
-
+                    
+                    elif re.match(r'-.*', token):
+                        lex[i][j] = repr(Token(T_PARAMETER[0], token))
+                                                
                     elif re.match(r'\$[^ \t\n\r0-9].*', token):
                         if token[1:] in BUILTIN_VARS:
-                            tokenInstType = type(BUILTIN_VARS[token[1:]])
-
-                            if tokenInstType == str:
-                                lex[i][j] = repr(Token(T_STRING, BUILTIN_VARS[token[1:]]))
-
-                            elif tokenInstType == int:
-                                lex[i][j] = repr(Token(T_INTEGER, BUILTIN_VARS[token[1:]]))
-
-                            elif tokenInstType == float:
-                                lex[i][j] = repr(Token(T_FLOAT, BUILTIN_VARS[token[1:]]))
-
-                        lex[i][j] = repr(Token(T_IDENTIFIER, token[1:]))
+                            tokType = {t[1]: t[0] for t in BUILTIN_TYPES}[type(BUILTIN_VARS[token[1:]])]
+                            lex[i][j] = repr(Token(tokType, BUILTIN_VARS[token[1:]]))
+                        else: 
+                            lex[i][j] = repr(Token(T_IDENTIFIER[0], token[1:]))
 
                     elif re.match(r'[\'"].*[\'"]', token, flags=re.DOTALL):
-                        lex[i][j] = repr(Token(T_STRING, eval(token)))
+                        lex[i][j] = repr(Token(T_STRING[0], eval(token)))
 
                     else:
-                        SRNError(3, f"Invalid token: <{token}>", self.pos)
+                        SRNError(ERRORS["SCE"], f"Invalid token: <{token}>", self.pos)
 
-            self.pos.ln += 1
+            self.pos.advance('line')
 
         return lex, self.pos.fn
     
@@ -258,7 +240,7 @@ class Lexer:
                 tokens.append(tok)
                 tok = ''
                 continue
-            
+
             tok += char
 
         tokens.append(tok)

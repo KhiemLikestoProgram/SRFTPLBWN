@@ -6,7 +6,7 @@ SRNFTPLBWN (SRNFTPL for short) is a programing (scripting) language, design to d
 ## _Current version_: `v1.0.0a`
 
 ## _Requirements_:
- - Python 3.10 or above (im too lazy to make this backwards compatible)
+ - Python 3.10 or above (im too lazy to make this backwards compati ble)
  - `rich` module for debugging (this is still an Alpha version)
 
 ---

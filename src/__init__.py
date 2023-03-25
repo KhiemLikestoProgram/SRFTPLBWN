@@ -1,11 +1,15 @@
-"""
+f"""
 Author: NTGKhiem74
 File name (original name): __init__.py
 Last edited: 19/3/2023
 
-This program has a <DEBUG> mode that will only work if you don't use `wrt` command to write, since it
-doesn't print the newlines out.
+This program also has a debug mode and a help message.
+How to interpret the file:
+1) Run `python __init__.py some-path-to-the-file.srn [-d | -?]`
+2) Run `srn some-path-to-the-file.srn [-d | -?]`
+3) Double click on a .srn file <will implementing soon, experimental>
 """
+
 from classes import *
 from srnbuiltin import Param
 
@@ -23,9 +27,7 @@ if __name__ == "__main__":
             SRNError(2, f"The file '{FILEPATH}' doesn't exist in the current directory.", pos=None)
 
     if len(sys.argv) == 3:
-        PARAM       = sys.argv[2]
+        if sys.argv[2] in RT_PARAMETERS:
+            getattr(Param, RT_PARAMETERS[sys.argv[2]][0])()
     
-    if PARAM in PARAMETERS:
-        getattr(Param, PARAMETERS[PARAM][0])()
-    
-    SRNFTPLBWNI(*Lexer(FILEPATH).lex()).interpret()
+    Interpreter(*Lexer(FILEPATH).lex()).run()

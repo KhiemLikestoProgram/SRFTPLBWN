@@ -1,1 +1,6 @@
-prnLn "Welcome to \n" $_THISPL " " $_VER "!"
+
+# [bold]Hi![/]
+stack add 1
+stack add 2
+stack add 3
+stack switch 2 1

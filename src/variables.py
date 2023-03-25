@@ -4,7 +4,6 @@ from numpy 			import int64, float64
 from rich.console   import Console
 from rich.panel		import Panel
 import platform as pl
-import json
 import re
 import os, time, sys
 
@@ -18,7 +17,7 @@ class SRNError:
                 posDetail = f"<noPosInfo>"
             case _:
                 posDetail = f"[File [bold {COLORS['accent']}]{pos.fn}[/], line {pos.ln}, token no. {pos.tk}]"
-        if SETTINGS["notifyError"]: c.bell()
+        if SETTINGS["notify-error"]: c.bell()
         c.log(\
 f"""\
 [bold red]{errtype}[/]: {errmes}
@@ -67,12 +66,12 @@ BUILTIN_VARS	= {
 	"_HW!":	 	"Hello world!",
 	"_OS": 	   	f"{pl.system()} {pl.version()}",
 	"_THISPL":  "SRNFTPLBWN",
-	"_UNIXTIME":time.time(),
+	"_UTS":		time.time(), # Unix time stamp
 	"_USR":  	os.getlogin(),
 	"_VER":	 	repr(Version('alpha', 0, 1, 1)),
 	"~":		str(Path.home()),
 }
-BUILTIN_TYPES   = [ globals()[var][0] for var in dir() if re.match(r'T_', var) ]
+BUILTIN_TYPES   = [ globals()[var] for var in dir() if re.match(r'T_', var) ]
 
 SETTINGS = {
     "show-debug-info": False,

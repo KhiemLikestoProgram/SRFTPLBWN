@@ -51,11 +51,11 @@ class Interpreter:
                 f"All arguments must be in \n{types_}.", self.pos)
 
         elif isinstance(idx, tuple):
-            if all([t in types_ for t in idx]):
+            if all([t in types_ for t in self.ARG_TYPE[idx[0]:idx[1]]]):
                 return True
             else:
                 SRNError(ERRORS["SCE"], 
-                f"Arguments span from {idx[0]} to {idx[1]} must be in \n{types_}, not {idx}", self.pos)
+                f"Arguments span from {idx[0]} to {idx[1]} must be in \n{types_}, not {self.ARG_TYPE[idx]}", self.pos)
 
         elif isinstance(idx, int) and idx < len(self.ARGV):
             t = self.ARG_TYPE[idx]
@@ -68,11 +68,11 @@ class Interpreter:
         elif idx is None: return True
 
         else:
-            SRNError(ERRORS["ITPTE"], "I")
+            SRNError(ERRORS["ITPTE"], f"Expect idx to be an integer, tuple, or literal 'all', not '{idx}'.", None)
 
     def run(self) -> None:
         for i, line in enumerate(self.lex):
-            if line == [] or line[0].split(':')[0] in KEYWORDS['COMMENT']:
+            if line == []:
                 self.pos.advance('line'); continue
 
             self.COM_TYPE, self.COMV,                           \
@@ -83,7 +83,6 @@ class Interpreter:
            [         arg.split(':')[0]   for arg in line[1:]],  \
            [':'.join(arg.split(':')[1:]) for arg in line[1:]]
             
-            c.print_json(dir(Statement))
             # Replaces every argument Token object (value and type) with a `iden` object, 
             # if it is in the program's "memory".
             self.pos.advance()
@@ -95,19 +94,16 @@ class Interpreter:
                 and self.COM_TYPE not in (KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]):
                     if a in MEMORY:
                         self.ARG_TYPE[i] = MEMORY[a][0]
-
-                        if cls == iden:
-                            match self.ARGV[i]:
-                                case '.': self.ARGV[i] = RESULTS[-1] if RESULTS else ''
-                            self.ARGV[i] = cls(self.ARGV[i])
-
-                        elif cls not in None:
-                            self.ARGV[i] = cls(MEMORY[a][1])
+                        self.ARGV[i]     = cls(self.ARGV[i])
+                    elif a == '.':
+                        self.ARG_TYPE[i] = [bit[0] for bit in BUILTIN_TYPES if type(RESULTS[-1]) == bit[0]][0]
+                        self.ARGV[i] = RESULTS[-1] if RESULTS else ''
                     else:
                         SRNError(ERRORS["SCE"], f"${a} is NOT in the program's memory.", self.pos)
 
                 elif t in (T_INTEGER[0], T_FLOAT[0])    \
-                and self.COMV in KEYWORDS["EXPR"]:
+                and self.COMV not in (KEYWORDS["STMT"]['prn'][0], KEYWORDS["STMT"]['prnLn'][0],
+                                      KEYWORDS["STMT"]['ask'][0], KEYWORDS["STMT"]['askLn'][0]):
                     self.ARGV[i] = cls(a)
                 
                 elif i == 1 \
@@ -115,11 +111,11 @@ class Interpreter:
                 and self.COM_TYPE in (KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]):
                     match self.ARGV[i]:
                         case '.': self.ARGV[i] = RESULTS[-1] if RESULTS else ''
-                        case _: self.ARGV[i] = iden(self.ARGV[i])
+                        case _:   self.ARGV[i] = iden(self.ARGV[i])
 
             if self.COMV in KEYWORDS["EXPR"]:   self.expr(KEYWORDS["EXPR"][self.COMV][2])
             elif self.COMV in KEYWORDS["STMT"]: self.stmt(KEYWORDS["STMT"][self.COMV][2])
-            elif self.COMV in KEYWORDS["COMMENT"]:global cont; cont = ' '.join(self.ARGV)
+            elif self.COMV in KEYWORDS["COMMENT"]: self.cmt()
             else:
                 SRNError(ERRORS["SCE"], f"Invalid command type <{self.COMV}>.", self.pos)
 
@@ -137,7 +133,7 @@ class Interpreter:
     def expr(self, req):
         if self.isType(*req):
             expr = Expression(self.ARGV, self.ARG_TYPE)
-            getattr(expr, KEYWORDS["EXPR"][self.COMV][1])()
+            RESULTS.append(getattr(expr, KEYWORDS["EXPR"][self.COMV][1])())
         
         if SETTINGS['show-debug-info']:
             global cont
@@ -150,7 +146,12 @@ class Interpreter:
             
         if SETTINGS['show-debug-info']:
             global cont
-            cont = f'{RESULTS=}\n{MEMORY=}\n{self.ARGV=}'
+            cont = f'{RESULTS=}\n{MEMORY=}\n{STACK=}\n{self.ARGV=}'
+    
+    def cmt(self):
+        if SETTINGS['show-debug-info']:
+            global cont
+            cont = ' '.join(self.ARGV)
     
 class Token:
 
@@ -189,7 +190,10 @@ class Lexer:
             for j, token in enumerate(line):
                 self.pos.advance('tok')
                 
-                if isComment: isComment = False; break
+                if isComment:
+                    lex[i][j] = repr(Token(T_COMMENT[0], token))
+                    if len(line) - j == 1: isComment = False
+                    continue
 
                 if  re.match(r'^[+-]?(\d*\.)?\d+$', token):
                     if '.' in token:
@@ -198,18 +202,20 @@ class Lexer:
                         lex[i][j] = repr(Token(T_INTEGER[0], token))
                 else:
 
-                    if token in KEYWORDS["STMT"]:
+                    if re.match(r'^-?[A-z]\w+$', token) and j >= 1:
+                        lex[i][j] = repr(Token(T_PARAMETER[0], token))
+
+                    elif token in KEYWORDS["STMT"]:
+                        if j != 0: SRNError(ERRORS['SCE'], "Command name must be the first token.", self.pos)
                         lex[i][j] = repr(Token(KEYWORDS["STMT"][token][0], token))
                     
                     elif token in KEYWORDS["EXPR"]:
+                        if j != 0: SRNError(ERRORS['SCE'], "Command name must be the first token.", self.pos)
                         lex[i][j] = repr(Token(KEYWORDS["EXPR"][token][0], token))
                     
                     elif re.match(r'(cmt|#)', token):
                         lex[i][j] = repr(Token(T_COMMENT[0], token))
                         isComment = True
-                    
-                    elif re.match(r'-.*', token):
-                        lex[i][j] = repr(Token(T_PARAMETER[0], token))
                                                 
                     elif re.match(r'\$[^ \t\n\r0-9].*', token):
                         if token[1:] in BUILTIN_VARS:
@@ -223,7 +229,6 @@ class Lexer:
 
                     else:
                         SRNError(ERRORS["SCE"], f"Invalid token: <{token}>", self.pos)
-
             self.pos.advance('line')
 
         return lex, self.pos.fn
@@ -233,8 +238,7 @@ class Lexer:
         isString = False
 
         for char in line:
-            if char == '#': break
-            if char == '"':
+            if char in '"\'':
                 isString ^= True
             elif char == ' ' and not isString:
                 tokens.append(tok)

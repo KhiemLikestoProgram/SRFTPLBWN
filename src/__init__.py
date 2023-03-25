@@ -3,7 +3,7 @@ Author: NTGKhiem74
 File name (original name): __init__.py
 Last edited: 19/3/2023
 
-This program also has a debug mode and a help message.
+This program also has a debug mode (-d) and a help message (-?).
 How to interpret the file:
 1) Run `python __init__.py some-path-to-the-file.srn [-d | -?]`
 2) Run `srn some-path-to-the-file.srn [-d | -?]`

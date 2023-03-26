@@ -1,6 +1,18 @@
 
-# [bold]Hi![/]
+# turn off debug mode
+mode -d 0
+
+# [bold red]Welcome to SRNFTPLBWN! [/][italic white](you can use rich's markup language for writing comments in this PL)
 stack add 1
 stack add 2
 stack add 3
 stack switch 2 1
+prnLn "Hello world!"
+prnLn "Your username is: " $_USR
+ask "You're using " $_OS ", right? "
+set $hmm $.
+prnLn $hmm $_OS $_UTS
+prnLn "Hmmm... how about printing RESULTS and STACK?"
+prnLn "Here they are!"
+prnLn "RESULTS: " $_RES
+prnLn "STACK: "   $_STACK

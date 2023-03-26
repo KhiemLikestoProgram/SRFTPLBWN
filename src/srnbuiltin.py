@@ -42,16 +42,21 @@ class Statement:
                 input = readchar.readchar()
                 if self.args[0] == '-sc': sys.stdout.write(input)
             case _:
-                SRNError(ERRORS['SCE'], "Invalid parameter.", self.pos)
+                SRNError(ERRORS['SCE'], f"Invalid parameter: '{self.args[0]}'.", self.pos)
         RESULTS.append(input)
 
     def mode(self):
-        for arg in self.args:
-            match arg:
-                case '-d': Param.debug()
-                case '-?' | '?': Param.help()
-                case _:
-                    SRNError(ERRORS['SCE'], "Invalid parameter.", self.pos)
+        match self.args[0]:
+            case '-d':
+                if len(self.args) < 2:
+                    SRNError(ERRORS['SCE'], f"Not enough arguments for command: 'mode'", self.pos)
+                try:
+                    Param.debug(bool(self.args[1]))
+                except ValueError:
+                    SRNError(ERRORS['SCE'], f"Invalid value for {SETTINGS=}.")
+            case '-?' | '?': Param.help()
+            case _:
+                SRNError(ERRORS['SCE'], f"Invalid parameter: '{self.args[0]}'.", self.pos)
 
     def prn(self):
         sys.stdout.write(''.join(self.args))
@@ -78,6 +83,7 @@ class Statement:
                 if self.args[0] == 'ins':
                     if self.argsType[1] != T_INTEGER[0]:
                         SRNError(ERRORS['SCE'], "The index to insert must be an integer.", self.pos)
+                
                     if self.args[1] >= len(STACK):
                         SRNError(ERRORS['SCE'], "The index to insert must be smaller than the length of the stack.", self.pos)
 
@@ -86,8 +92,10 @@ class Statement:
                 elif self.args[0] == 'switch':
                     if (self.argsType[1], self.argsType[2]) != (T_INTEGER[0], T_INTEGER[0]):
                         SRNError(ERRORS['SCE'], "The indexes to switch must be integers.", self.pos)
+
                     if self.args[1] >= len(STACK) or self.args[2] >= len(STACK):
                         SRNError(ERRORS['SCE'], "The indexes to switch must be smaller than the length of the stack.", self.pos)
+
                     STACK[self.args[1]], STACK[self.args[2]] = STACK[self.args[2]], STACK[self.args[1]]
 
             case 'ldup' | 'rdup':
@@ -141,7 +149,7 @@ class Expression:
 class Param:
     
     @staticmethod
-    def debug(): SETTINGS['show-debug-info'] = True
+    def debug(boolean=True): SETTINGS['show-debug-info'] = boolean
 
     @staticmethod
     def help():

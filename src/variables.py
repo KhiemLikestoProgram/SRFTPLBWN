@@ -64,7 +64,7 @@ BUILTIN_VARS	= {
 	"_AUTH":  	"NTGKhiem74",
 	"_CWD":		str(Path.cwd()),
 	"_HW!":	 	"Hello world!",
-	"_OS": 	   	f"{pl.system()} {pl.version()}",
+	"_OS": 	   	f"{pl.system()} {pl.release()}",
 	"_THISPL":  "SRNFTPLBWN",
 	"_UTS":		time.time(), # Unix time stamp
 	"_USR":  	os.getlogin(),

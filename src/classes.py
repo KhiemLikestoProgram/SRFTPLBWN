@@ -22,7 +22,7 @@ class Position:
     
     def advance(self, mode='token'):
         match mode:
-            case 'line': self.ln += 1; self.tk = 0
+            case 'line': self.ln += 1; self.tk = 1
             case 'token': self.tk += 1
 
 class Interpreter:
@@ -59,16 +59,15 @@ class Interpreter:
 
         elif isinstance(idx, int) and idx < len(self.ARGV):
             t = self.ARG_TYPE[idx]
-            if t in types_:
-                return True
+            if t in types_: return True
             else:
-                SRNError(ERRORS["SCE"], 
+                SRNError(ERRORS["SCE"],
                 f"The argument no. {idx} must be in \n{types_}, not {t}", self.pos)
         
         elif idx is None: return True
 
         else:
-            SRNError(ERRORS["ITPTE"], f"Expect idx to be an integer, tuple, or literal 'all', not '{idx}'.", None)
+            SRNError(ERRORS["ITPTE"], f"Expect `idx` to be an integer, a tuple or literal 'all', not '{idx}'.", self.pos)
 
     def run(self) -> None:
         for i, line in enumerate(self.lex):
@@ -98,6 +97,12 @@ class Interpreter:
                     elif a == '.':
                         self.ARG_TYPE[i] = [bit[0] for bit in BUILTIN_TYPES if type(RESULTS[-1]) == bit[0]][0]
                         self.ARGV[i] = RESULTS[-1] if RESULTS else ''
+                    elif a == '_RES':
+                        self.ARG_TYPE[i] = [bit[0] for bit in BUILTIN_TYPES if type(', '.join([str(r) for r in RESULTS])) == bit[0]][0]
+                        self.ARGV[i] = ', '.join(RESULTS)
+                    elif a == '_STK':
+                        self.ARG_TYPE[i] = [bit[0] for bit in BUILTIN_TYPES if type(', '.join([str(st) for st in RESULTS])) == bit[0]][0]
+                        self.ARGV[i] = ', '.join(STACK)    
                     else:
                         SRNError(ERRORS["SCE"], f"${a} is NOT in the program's memory.", self.pos)
 
@@ -111,11 +116,17 @@ class Interpreter:
                 and self.COM_TYPE in (KEYWORDS["STMT"]["set"][0], KEYWORDS["STMT"]["def"][0]):
                     match self.ARGV[i]:
                         case '.': self.ARGV[i] = RESULTS[-1] if RESULTS else ''
+                        case '_RES': self.ARGV[i] = ', '.join(RESULTS)
+                        case '_STK': self.ARGV[i] = ', '.join(STACK)
                         case _:   self.ARGV[i] = iden(self.ARGV[i])
 
-            if self.COMV in KEYWORDS["EXPR"]:   self.expr(KEYWORDS["EXPR"][self.COMV][2])
-            elif self.COMV in KEYWORDS["STMT"]: self.stmt(KEYWORDS["STMT"][self.COMV][2])
-            elif self.COMV in KEYWORDS["COMMENT"]: self.cmt()
+            lnType = KEYWORDS["EXPR"], KEYWORDS["STMT"], KEYWORDS["COMMENT"]
+            if self.COMV in lnType[0]:
+                self.expr(lnType[0][self.COMV][2])
+            elif self.COMV in lnType[1]:
+                self.stmt(lnType[1][self.COMV][2])
+            elif self.COMV in lnType[2]:
+                self.cmt()
             else:
                 SRNError(ERRORS["SCE"], f"Invalid command type <{self.COMV}>.", self.pos)
 
@@ -201,8 +212,7 @@ class Lexer:
                     else:
                         lex[i][j] = repr(Token(T_INTEGER[0], token))
                 else:
-
-                    if re.match(r'^-?[A-z]\w+$', token) and j >= 1:
+                    if re.match(r'-?[A-z]\w*', token) and j >= 1:
                         lex[i][j] = repr(Token(T_PARAMETER[0], token))
 
                     elif token in KEYWORDS["STMT"]:
@@ -235,12 +245,14 @@ class Lexer:
     
     def tokenize(self, line) -> list[str]:
         tokens = [];    tok = ''
-        isString = False
+        lSQ = [False, None] # lastStringQuote
+        
 
         for char in line:
             if char in '"\'':
-                isString ^= True
-            elif char == ' ' and not isString:
+                if lSQ[1] is not None and lSQ[1] == char: lSQ = [False, None]
+                elif lSQ[1] is None: lSQ = [True, char]
+            elif char == ' ' and not lSQ[0]:
                 tokens.append(tok)
                 tok = ''
                 continue

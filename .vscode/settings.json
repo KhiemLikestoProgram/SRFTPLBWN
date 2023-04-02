@@ -1,7 +1,7 @@
 {
     "python.testing.unittestArgs": [
         "-v",
-        "-e",
+        "-s",
         "./src",
         "-p",
         "*_test.py"

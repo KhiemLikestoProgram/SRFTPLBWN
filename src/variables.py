@@ -1,11 +1,14 @@
 
-from pathlib 		import Path
-from numpy 			import int64, float64
-from rich.console   import Console
-from rich.panel		import Panel
+import os
 import platform as pl
 import re
-import os, time, sys
+import sys
+import time
+from pathlib import Path
+from types import SimpleNamespace
+
+from numpy import float64, int64
+from rich.console import Console
 
 ########## CONSTANTS ##########
 c = Console()
@@ -16,19 +19,17 @@ class SRNError:
             case None:
                 posDetail = f"<noPosInfo>"
             case _:
-                posDetail = f"[File [bold {COLORS['accent']}]{pos.fn}[/], line {pos.ln}, token no. {pos.tk}]"
+                posDetail = f"[bold {COLORS['accent']}]{pos.fn}[/]:{pos.ln}:{pos.tk}"
         if SETTINGS["notify-error"]: c.bell()
-        c.log(\
+        c.print(\
 f"""\
-[bold red]{errtype}[/]: {errmes}
 {posDetail}
+\t[bold red]{errtype}[/]: {errmes}
 """
         )
         sys.exit(1)
 
-class iden:
-	def __new__(self, key):
-		return MEMORY[key][1]
+iden = lambda key: MEMORY[key].val
 
 class Version:
 	def __init__(self, stage, *args: int) -> None:
@@ -41,38 +42,41 @@ class Version:
 	def __str__(self) -> str:
 		return f"v{'.'.join(self.v)}{self.stage[0]}"
 
-F_STAT  = 0x11  # Statement flag.
-F_EXPR  = 0x12  # Expression flag.
 F_CONST = 0x14 	# Constant flag for constants in this language.
 F_VAR	= 0x15	# Variable flag for variables in this language.
 
 ### TOKEN TYPES ###
-T_COMMENT		= 'CMT', None
-T_OTHER			= 'OTHER', None
-T_FLOAT			= 'FLOAT', float64
-T_IDENTIFIER	= 'IDEN', iden
-T_INTEGER 		= 'INT', int64
-T_STRING		= 'STR', str
-T_PARAMETER		= 'PARAM', None
+T_COMMENT		= SimpleNamespace(type='CMT', cls=None)
+T_OTHER			= SimpleNamespace(type='OTHER', cls=None)
+T_FLOAT			= SimpleNamespace(type='FLOAT', cls=float64)
+T_IDENTIFIER	= SimpleNamespace(type='IDEN', cls=iden)
+T_INTEGER 		= SimpleNamespace(type='INT', cls=int64)
+T_STRING		= SimpleNamespace(type='STR', cls=str)
+T_PARAMETER		= SimpleNamespace(type='PARAM', cls=None)
 
 ## VARIABLES ##
-MEMORY  = {}
 STACK  	= []
 RESULTS = []
+MEMORY  = {
+	"_RES":		SimpleNamespace(tok=T_STRING.type, val=', '.join(RESULTS), type=F_VAR),
+	"_STACK":	SimpleNamespace(tok=T_STRING.type, val=', '.join(STACK),	 type=F_VAR)
+}
 
+# BUILT-IN STUFF
 BUILTIN_VARS	= {
 	"_AUTH":  	"NTGKhiem74",
 	"_CWD":		str(Path.cwd()),
 	"_HW!":	 	"Hello world!",
 	"_OS": 	   	f"{pl.system()} {pl.release()}",
 	"_THISPL":  "SRNFTPLBWN",
-	"_UTS":		time.time(), # Unix time stamp
+	"_UTS":		float64(time.time()), # Unix time stamp
 	"_USR":  	os.getlogin(),
 	"_VER":	 	repr(Version('alpha', 0, 1, 1)),
-	"~":		str(Path.home()),
+	"~":		Path.home().as_posix(),
 }
 BUILTIN_TYPES   = [ globals()[var] for var in dir() if re.match(r'T_', var) ]
 
+# Customizable
 SETTINGS = {
     "show-debug-info": False,
     "notify-error": False
@@ -88,7 +92,7 @@ COLORS = {
 }
 ERRORS = {
 	"SCE": "SourceCodeError",
-	"ITPTE": "InterpreterError"
+	"CFE": "ConfigurationError"
 }
 
 

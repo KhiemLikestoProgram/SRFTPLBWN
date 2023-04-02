@@ -10,11 +10,11 @@ How to interpret the file:
 3) Double click on a .srn file <will implementing soon, experimental>
 """
 
+import sys
+from pathlib import PosixPath, WindowsPath
+
 from classes import *
 from srnbuiltin import Param
-
-from pathlib import Path
-import sys
 
 if __name__ == "__main__":
     
@@ -22,7 +22,13 @@ if __name__ == "__main__":
         SRNError(1.1, "Missing file name.", pos=None)
         sys.exit(1)
     else:
-        FILEPATH    = Path(sys.argv[1]).absolute()
+        if   sys.platform in ('darwin', 'linux'): 
+            FILEPATH    = PosixPath(sys.argv[1],).absolute()
+        elif sys.platform in ('win32', 'cygwin', 'msys2'):
+            FILEPATH    = WindowsPath(sys.argv[1]).absolute()
+        else:
+            FILEPATH  = Path(sys.argv[1]).absolute()
+
         if not FILEPATH.exists():
             SRNError(2, f"The file '{FILEPATH}' doesn't exist in the current directory.", pos=None)
 

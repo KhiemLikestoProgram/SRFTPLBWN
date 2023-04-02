@@ -1,27 +1,27 @@
-
-from variables import *
+import sys
 import numpy as np
 import readchar
-import sys
+
+from variables import *
 
 class Statement:
     commands = {
-    #   Token     Type       Function to call   Requirements (see `isType` function)
-        "ask":	  ("ASK",	 "ask", 			("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
-        "askLn":  ("ASKLN",	 "askLn", 			("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
-        "askChr": ("ASKCHR", "askChr", 			(    0, 	     (T_PARAMETER[0]) )),
-        "mode":	  ("MODE",	 "mode", 			(    0, 	     (T_PARAMETER[0]) )),
-        "prn":	  ("PRINT",	 "prn", 			("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
-        "prnLn":  ("PRNLN",	 "prnLn", 	        ("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
-        "stack":  ("STACK",	 "stack", 			((1, None), tuple(t[0] for t in BUILTIN_TYPES) )),
-        "set":	  ("SET",	 "var", 			("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
-        "def":    ("DEF", 	 "const",			("all", 	tuple(t[0] for t in BUILTIN_TYPES) )),
+        "ask":	  SimpleNamespace(type="ASK",	 fn="ask", 		req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
+        "askLn":  SimpleNamespace(type="ASKLN",	 fn="askLn", 	req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
+        "askChr": SimpleNamespace(type="ASKCHR",  fn="askChr", 	req=(    0, tuple([T_PARAMETER.type]) )),
+        "mode":	  SimpleNamespace(type="MODE",	 fn="mode", 	req=(    0, tuple([T_PARAMETER.type]) )),
+        "prn":	  SimpleNamespace(type="PRINT",	 fn="prn", 		req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
+        "prnLn":  SimpleNamespace(type="PRNLN",	 fn="prnLn", 	req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
+        "stack":  SimpleNamespace(type="STACK",	 fn="stack", 	req=((1, None), tuple(t.type for t in BUILTIN_TYPES) )),
+        "set":	  SimpleNamespace(type="SET",	 fn="var", 		req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
+        "def":    SimpleNamespace(type="DEF", 	 fn="const",	req=("all", tuple(t.type for t in BUILTIN_TYPES) )),
     }
 
     def __init__(self, pos, com, args, argsType) -> None:
         self.pos = pos
         self.com = com
-        self.args, self.argsType = args, argsType
+        self.args = args
+        self.argsType = argsType
 
     def ask(self):
         self.prn()
@@ -53,17 +53,17 @@ class Statement:
                 try:
                     Param.debug(bool(self.args[1]))
                 except ValueError:
-                    SRNError(ERRORS['SCE'], f"Invalid value for {SETTINGS=}.")
+                    SRNError(ERRORS['SCE'], f"Invalid value for command: 'mode'.")
             case '-?' | '?': Param.help()
             case _:
                 SRNError(ERRORS['SCE'], f"Invalid parameter: '{self.args[0]}'.", self.pos)
 
     def prn(self):
-        sys.stdout.write(''.join(self.args))
+        sys.stdout.write(''.join([str(a) for a in self.args]))
         sys.stdout.flush()
     
     def prnLn(self):
-        sys.stdout.write(''.join(self.args)+'\n')
+        sys.stdout.write(''.join([str(a) for a in self.args])+'\n')
         sys.stdout.flush()
 
     def stack(self):
@@ -90,7 +90,7 @@ class Statement:
                     STACK.insert(self.args[1], (self.argsType[2], self.args[2]))
 
                 elif self.args[0] == 'switch':
-                    if (self.argsType[1], self.argsType[2]) != (T_INTEGER[0], T_INTEGER[0]):
+                    if (self.argsType[1], self.argsType[2]) != (T_INTEGER.type, T_INTEGER.type):
                         SRNError(ERRORS['SCE'], "The indexes to switch must be integers.", self.pos)
 
                     if self.args[1] >= len(STACK) or self.args[2] >= len(STACK):
@@ -103,31 +103,34 @@ class Statement:
                 STACK.insert(self.args[1]+pos, STACK[self.args[1]])
             case _:
                 SRNError(ERRORS['SCE'], "Invalid stack operation.", self.pos)
+        
+        MEMORY["_STACK"] = SimpleNamespace(tok=T_OTHER, val=' '.join([str(s) for s in STACK]), type=F_VAR)
     
     def var(self):
-        if (self.args[0] not in MEMORY) or (self.args[1] in MEMORY and MEMORY[self.args[0]][1] == F_VAR):
-            MEMORY.update({self.args[0]: (self.argsType[1], self.args[1], F_VAR)})
+        if (self.args[0] not in MEMORY) or (self.args[0] in MEMORY and MEMORY[self.args[0]].type == F_VAR):
+            MEMORY[self.args[0]] = \
+            SimpleNamespace(tok=self.argsType[1], val=self.args[1], type=F_VAR)
         else:
             SRNError(ERRORS['SCE'], "Can't change the value of a constant.", self.pos)
 
     def const(self):
-        if self.args[0] in MEMORY and MEMORY[self.args[0]][1] == F_CONST:
+        if self.args[0] in MEMORY and MEMORY[self.args[0]].type == F_CONST:
             SRNError(ERRORS['SCE'], "Can't change the value of a constant.", self.pos)
         elif self.args[0] not in MEMORY:
-            MEMORY.update({self.args[0]: (self.argsType[1], self.args[1], F_CONST)})
+            MEMORY[self.args[0]] = \
+            SimpleNamespace(tok=self.argsType[1], val=self.args[1], type=F_VAR)
 
 class Expression:
     commands = {
-    #   Token     Type       Function to call   Requirements (see `isType` function)
-        "add":	  ("ADD",	 "add", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "sub":	  ("SUB",	 "sub", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "pow":	  ("POW",	 "pow", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "mul":	  ("MUL",	 "mul", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "div":	  ("DIV",	 "div", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "fdiv":   ("FDIV",	 "floor_div", 	    ("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "mod":	  ("MOD",	 "mod", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "log":	  ("LOG",	 "log", 			("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
-        "sum":    ("SUM", 	 "sum",				("all", 	(T_IDENTIFIER[0], T_INTEGER[0], T_FLOAT[0]))),
+        "add":	  SimpleNamespace(type="ADD",	 fn="add", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "sub":	  SimpleNamespace(type="SUB",	 fn="sub", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "pow":	  SimpleNamespace(type="POW",	 fn="pow", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "mul":	  SimpleNamespace(type="MUL",	 fn="mul", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "div":	  SimpleNamespace(type="DIV",	 fn="div", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "fdiv":   SimpleNamespace(type="FDIV",   fn="floor_div",    req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "mod":	  SimpleNamespace(type="MOD",	 fn="mod", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "log":	  SimpleNamespace(type="LOG",	 fn="log", 			req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
+        "sum":    SimpleNamespace(type="SUM",    fn="sum",		    req=("all", 	(T_IDENTIFIER.type, T_INTEGER.type, T_FLOAT.type))),
     }
     
     def __init__(self, args, argsType) -> None:
@@ -149,7 +152,7 @@ class Expression:
 class Param:
     
     @staticmethod
-    def debug(boolean=True): SETTINGS['show-debug-info'] = boolean
+    def debug(val=True): SETTINGS['show-debug-info'] = val
 
     @staticmethod
     def help():
@@ -160,12 +163,14 @@ class Param:
         c.print('\n'.join([f'{k:5s} -> {v[1]}' for k, v in RT_PARAMETERS.items()]))
         sys.exit(0)
 
-KEYWORDS = {
-	#   Token     Type        Function to call  Requirements (see `isType` function)
-	"COMMENT": {
-		"cmt":	  (T_COMMENT, None,				(None,		None)),
-		"#":	  (T_COMMENT, None,				(None,		None)),
+KEYWORDS = SimpleNamespace(
+	CMT = {
+		"cmt":	  SimpleNamespace(type=T_COMMENT.type, fn=None, req=(None, None)),
+		"#":	  SimpleNamespace(type=T_COMMENT.type, fn=None, req=(None, None)),
 	},
-	"STMT": Statement.commands,
-	"EXPR": Expression.commands,
-}
+	STMT = Statement.commands,
+	EXPR = Expression.commands,
+)
+
+FORBID_CONVERT = (KEYWORDS.STMT['prn'].type, KEYWORDS.STMT['prnLn'].type,
+				  KEYWORDS.STMT['ask'].type, KEYWORDS.STMT['askLn'].type)

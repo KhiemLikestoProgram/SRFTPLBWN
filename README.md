@@ -14,6 +14,6 @@ SRNFTPLBWN (SRN for short) is a programing (scripting) language, design to do ba
 ### How to interpret the file:
 1. Type `python __init__.py some-path-to-the-file.srn [-d | -?]` in your terminal.
 2. Type `srn some-path-to-the-file.srn [-d | -?]` in your terminal.
-3. Double click on a `.srn` file (will implementing soon, experimental).
+3. Double click on a `.srn` file (will be implemented soon, is experimental).
 
 #### **WARNING:** _Because this is a (probably esoteric) language, you may expect easy learning curves. But this language isn't suitable for making programs, so don't make programs with it (itwillbeveryslowandbuggy)._
